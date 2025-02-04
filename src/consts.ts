@@ -13,10 +13,10 @@ export type Link = {
 }
 
 export const SITE: Site = {
-  TITLE: 'astro-erudite',
+  TITLE: '0xd00',
   DESCRIPTION:
-    'astro-erudite is a opinionated, no-frills blogging template—built with Astro, Tailwind, and shadcn/ui.',
-  EMAIL: 'jason@enscribe.dev',
+    '',
+  EMAIL: '0@1.dev',
   NUM_POSTS_ON_HOMEPAGE: 2,
   POSTS_PER_PAGE: 3,
   SITEURL: 'https://astro-erudite.vercel.app',
@@ -25,7 +25,7 @@ export const SITE: Site = {
 export const NAV_LINKS: Link[] = [
   { href: '/blog', label: 'blog' },
   { href: '/authors', label: 'authors' },
-  { href: '/about', label: 'about' },
+  // { href: '/about', label: 'about' },
   { href: '/tags', label: 'tags' },
 ]
 
