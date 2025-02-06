@@ -4,6 +4,7 @@ import Head from '@/components/Head.astro'
 import Header from '@/components/Header.astro'
 import { SITE } from '@/consts'
 import  SpeedInsights  from "@vercel/speed-insights/astro"
+import Analytics from '@vercel/analytics/astro'
 
 type Props = {
   title: string
@@ -24,6 +25,7 @@ const { title, description, image } = Astro.props
     />
   </head>
   <body>
+  <Analytics/>
   <SpeedInsights/>
     <div
       class="box-border flex h-fit min-h-screen flex-col gap-y-6 font-sans antialiased"
