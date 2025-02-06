@@ -126,9 +126,7 @@ END_TIME: Thu Feb  6 05:37:53 2025
 DOWNLOADED: 9224 - FOUND: 4
 ```
 
-进入可疑路径 `http://10.10.172.34/guidelines/index.html` 发现一段可能是由管理员留给IT运维的话:
-`Hey bob, did you update that TomCat server? `
-因此将关注点放在tomcat上
+进入可疑路径 `http://10.10.172.34/guidelines/index.html` 发现一段可能是由管理员留给IT运维的话:`Hey bob, did you update that TomCat server? `因此将关注点放在tomcat上
 
 ### 爆破密码
 ```
@@ -167,7 +165,7 @@ nikto -id bob:bubbles -h http://10.10.172.34:1234/manager/html
 + 1 host(s) tested
 ```
 
-### 漏洞利用
+## 漏洞利用
 
 因为之前提到了tomcat所以先查找tomcat的漏洞
 ```
