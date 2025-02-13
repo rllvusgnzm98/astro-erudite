@@ -8,17 +8,26 @@ import { Image } from 'astro:assets'
 import type { CollectionEntry } from 'astro:content'
 import Link from './Link.astro'
 
-type Props = {
+interface Props {
   entry: CollectionEntry<'blog'>
+  loading?: 'lazy' | 'eager'
+  decoding?: 'async' | 'sync' | 'auto'
+  priority?: boolean
 }
 
-const { entry } = Astro.props as {
-  entry: CollectionEntry<'blog'>
-}
+const { 
+  entry,
+  loading = 'lazy',
+  decoding = 'async',
+  priority = false
+} = Astro.props as Props
 
 const formattedDate = formatDate(entry.data.date)
 const readTime = readingTime(entry.body!)
 const authors = await parseAuthors(entry.data.authors ?? [])
+
+// 处理图片，支持字符串URL和导入的图片对象
+const imageUrl = entry.data.image;
 ---
 
 <div
@@ -37,6 +46,10 @@ const authors = await parseAuthors(entry.data.authors ?? [])
             width={1200}
             height={630}
             class="object-cover"
+            loading={priority ? 'eager' : loading}
+            decoding={decoding}
+            format="webp"
+            fetchpriority={priority ? 'high' : 'auto'}
           />
         </div>
       )
