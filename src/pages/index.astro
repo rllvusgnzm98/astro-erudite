@@ -7,25 +7,116 @@ import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
 import { getCollection } from 'astro:content'
 
-const blog = (await getCollection('blog'))
-  .filter((post) => !post.data.draft)
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-  .slice(0, SITE.NUM_POSTS_ON_HOMEPAGE)
+// 1. 初始获取限制数量，预留足够余量
+const INITIAL_POSTS_LIMIT = 10; // 根据最大屏幕尺寸预估，通常不会显示超过10篇
+
+// 2. 只获取必要的字段
+const allPosts = await getCollection('blog', ({ data }) => {
+  return import.meta.env.PROD ? data.draft !== true : true
+}, ({
+  data: {
+    title: true,
+    description: true,
+    date: true,
+    image: true,
+    tags: true,
+    authors: true
+  },
+  render: false // 不加载完整的 markdown 内容
+})).then((posts) => {
+  return posts
+    .sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf())
+    .slice(0, INITIAL_POSTS_LIMIT); // 限制初始加载数量
+});
+
+// 检查第一篇文章的图片是否存在且为字符串
+const firstPostImage = typeof allPosts[0]?.data.image === 'string' ? allPosts[0].data.image : null;
+
+// 3. 计算预估的初始显示数量
+const getInitialVisiblePosts = () => {
+  // 基于常见屏幕高度的保守估计
+  const estimatedHeaderHeight = 100;
+  const estimatedCardHeight = 280;
+  const estimatedGap = 24;
+  const estimatedViewportHeight = 800; // 保守估计
+
+  const availableHeight = estimatedViewportHeight - estimatedHeaderHeight;
+  return Math.ceil(availableHeight / (estimatedCardHeight + estimatedGap));
+};
+
+const initialVisiblePosts = getInitialVisiblePosts();
 ---
+
+<!-- 2. 添加视口预加载提示 -->
+<head>
+  <meta charset="UTF-8">
+  {/* 只在确实有图片时才预加载 */}
+  {firstPostImage && (
+    <link rel="preload" as="image" href={firstPostImage} fetchpriority="high">
+  )}
+</head>
+
+<script define:vars={{ initialVisiblePosts }}>
+  // 确保DOM完全加载后再执行
+  function initPostsDisplay() {
+    const updatePostsDisplay = () => {
+      const container = document.querySelector('.posts-container');
+      if (!container) return;
+      
+      const viewportHeight = window.innerHeight;
+      const headerHeight = 100;
+      const cardHeight = 280;
+      const gap = 24;
+      
+      const availableHeight = viewportHeight - headerHeight;
+      const visiblePosts = Math.floor(availableHeight / (cardHeight + gap));
+      
+      document.querySelectorAll('.blog-card').forEach((post, index) => {
+        post.style.display = index < visiblePosts ? '' : 'none';
+      });
+    }
+
+    let timeoutId;
+    const debouncedUpdate = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        requestAnimationFrame(updatePostsDisplay);
+      }, 150);
+    };
+
+    window.addEventListener('resize', debouncedUpdate, { passive: true });
+    updatePostsDisplay();
+  }
+
+  // 确保DOM加载完成后再初始化
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPostsDisplay);
+  } else {
+    initPostsDisplay();
+  }
+</script>
 
 <Layout title="Home" description={SITE.DESCRIPTION}>
   <Container class="flex flex-col gap-y-6">
     <section class="flex flex-col gap-y-4">
       <h2 class="text-2xl font-bold">Latest posts</h2>
-      <ul class="not-prose flex flex-col gap-y-4">
+      <div class="posts-container space-y-6">
         {
-          blog.map((post) => (
-            <li>
-              <BlogCard entry={post} />
-            </li>
+          allPosts.map((post, index) => (
+            <div 
+              class="blog-card" 
+              style={index < initialVisiblePosts ? "display: block;" : "display: none;"}
+            >
+              <BlogCard 
+                entry={post} 
+                loading={index < initialVisiblePosts ? "eager" : "lazy"}
+                decoding="async"
+                priority={index === 0}
+              />
+            </div>
           ))
         }
-      </ul>
+      </div>
       <div class="flex justify-center">
         <Link
           href="/blog"
@@ -40,3 +131,19 @@ const blog = (await getCollection('blog'))
     </section>
   </Container>
 </Layout>
+
+<!-- 8. 添加延迟加载的内容提示 -->
+<noscript>
+  <style>
+    .blog-card { display: block !important; }
+  </style>
+</noscript>
+
+<!-- 4. 添加加载更多功能（可选） -->
+{allPosts.length >= INITIAL_POSTS_LIMIT && (
+  <div class="text-center mt-8">
+    <a href="/blog" class="inline-block px-6 py-2 bg-primary text-white rounded-lg">
+      查看更多文章
+    </a>
+  </div>
+)}
