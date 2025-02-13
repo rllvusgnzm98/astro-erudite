@@ -189,3 +189,16 @@
     }
   }
 }
+
+/* 将所有使用 -ms-high-contrast-adjust 的地方替换为新的标准 */
+@media (forced-colors: active) {
+  /* 这里放置针对高对比度模式的样式 */
+  :root {
+    forced-color-adjust: auto;
+  }
+}
+
+/* 如果需要禁用强制色彩调整 */
+.no-forced-colors {
+  forced-color-adjust: none;
+}
