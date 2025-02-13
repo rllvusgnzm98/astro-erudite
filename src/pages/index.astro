@@ -11,11 +11,11 @@ import { getCollection } from 'astro:content'
 const allPosts = await getCollection('blog')
 const sortedPosts = allPosts.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
 
-// 服务器端初始显示最少数量的文章（比如2篇）以避免闪烁
+// 服务器端初始显示最少数量的文章
 const initialPosts = sortedPosts.slice(0, SITE.NUM_POSTS_ON_HOMEPAGE)
 const remainingPosts = sortedPosts.slice(SITE.NUM_POSTS_ON_HOMEPAGE)
 
-// 检查第一篇文章的图片是否存在且为字符串
+// 检查第一篇文章的图片
 const firstPostImage = typeof initialPosts[0]?.data.image === 'string' ? initialPosts[0].data.image : null;
 ---
 
@@ -57,7 +57,7 @@ const firstPostImage = typeof initialPosts[0]?.data.image === 'string' ? initial
     const container = document.getElementById('posts-container');
     if (!container) return;
 
-    const posts = container.querySelectorAll('.blog-card');
+    const posts = container.querySelectorAll<HTMLDivElement>('.blog-card');
     if (!posts.length) return;
 
     // 获取视口高度和容器位置
@@ -69,20 +69,17 @@ const firstPostImage = typeof initialPosts[0]?.data.image === 'string' ? initial
     let currentHeight = 0;
     let visiblePosts = 0;
 
-    for (const post of posts) {
+    posts.forEach((post: HTMLDivElement) => {
       post.style.display = 'block';
       const postHeight = post.offsetHeight;
       currentHeight += postHeight + 24; // 24px 是 space-y-6 的间距
 
-      if (currentHeight > availableHeight) {
-        // 如果至少显示了两篇文章，就不再继续
-        if (visiblePosts >= 2) {
-          post.style.display = 'none';
-          break;
-        }
+      if (currentHeight > availableHeight && visiblePosts >= 2) {
+        post.style.display = 'none';
+        return;
       }
       visiblePosts++;
-    }
+    });
   }
 
   // 使用 requestAnimationFrame 确保在布局完成后再调整
