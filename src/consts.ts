@@ -19,7 +19,7 @@ export const SITE: Site = {
   EMAIL: '0@1.dev',
   NUM_POSTS_ON_HOMEPAGE: 2,
   POSTS_PER_PAGE: 3,
-  SITEURL: 'https://astro-erudite.vercel.app',
+  SITEURL: 'https://blog.0xd00.com/',
 }
 
 export const NAV_LINKS: Link[] = [
@@ -30,8 +30,8 @@ export const NAV_LINKS: Link[] = [
 ]
 
 export const SOCIAL_LINKS: Link[] = [
-  { href: 'https://github.com/jktrn', label: 'GitHub' },
-  { href: 'https://twitter.com/enscry', label: 'Twitter' },
-  { href: 'jason@enscribe.dev', label: 'Email' },
+  // { href: 'https://github.com/', label: 'GitHub' },
+  // { href: 'https://twitter.com/', label: 'Twitter' },
+  // { href: '0@1.dev', label: 'Email' },
   { href: '/rss.xml', label: 'RSS' },
 ]
