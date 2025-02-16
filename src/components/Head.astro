@@ -103,18 +103,14 @@ const { title, description, image = '/static/twitter-card.png' } = Astro.props
   }
 </style>
 
-<!-- 异步加载非关键 CSS -->
+<!-- 移除预加载，直接使用标准加载 -->
+<link rel="stylesheet" href="/_astro/about.DjM4Ted7.css" />
+
+<!-- KaTeX CSS 也使用标准加载 -->
 <link
-  rel="preload"
-  href="/_astro/about.DjM4Ted7.css"
-  as="style"
-  onload="this.onload=null;this.rel='stylesheet'"
-/>
-<link
-  rel="preload"
+  rel="stylesheet"
   href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
-  as="style"
-  onload="this.onload=null;this.rel='stylesheet'"
+  crossorigin="anonymous"
 />
 
 <!-- 为不支持 JS 的浏览器提供回退方案 -->

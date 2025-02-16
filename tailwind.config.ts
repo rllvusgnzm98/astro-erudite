@@ -40,9 +40,28 @@ const config: Config = {
         border: 'hsl(var(--border))',
         ring: 'hsl(var(--ring))',
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            'a': {
+              color: 'hsl(var(--primary))',
+              textDecorationLine: 'underline',
+              fontWeight: '500',
+              '&:hover': {
+                color: 'hsl(var(--primary) / 0.8)',
+              },
+            },
+          },
+        },
+      },
     },
   },
-  plugins: [require('@tailwindcss/typography'), require('tailwindcss-animate')],
+  plugins: [
+    require('@tailwindcss/typography')({
+      className: 'prose',
+    }),
+    require('tailwindcss-animate'),
+  ],
 }
 
 export default config
