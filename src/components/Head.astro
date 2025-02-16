@@ -53,7 +53,10 @@ const { title, description, image = '/static/twitter-card.png' } = Astro.props
 <script is:inline>
   function setDarkMode(document) {
     const getThemePreference = () => {
-      if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
+      if (
+        typeof localStorage !== 'undefined' &&
+        localStorage.getItem('theme')
+      ) {
         return localStorage.getItem('theme')
       }
       return 'dark'
@@ -79,3 +82,46 @@ const { title, description, image = '/static/twitter-card.png' } = Astro.props
     setDarkMode(ev.newDocument)
   })
 </script>
+
+<!-- 内联关键 CSS -->
+<style is:inline>
+  /* 这里放置关键渲染路径所需的最小 CSS */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    /* 添加其他关键样式变量 */
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+</style>
+
+<!-- 异步加载非关键 CSS -->
+<link
+  rel="preload"
+  href="/_astro/about.DjM4Ted7.css"
+  as="style"
+  onload="this.onload=null;this.rel='stylesheet'"
+/>
+<link
+  rel="preload"
+  href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+  as="style"
+  onload="this.onload=null;this.rel='stylesheet'"
+/>
+
+<!-- 为不支持 JS 的浏览器提供回退方案 -->
+<noscript>
+  <link rel="stylesheet" href="/_astro/about.DjM4Ted7.css" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+  />
+</noscript>
