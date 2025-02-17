@@ -3,109 +3,62 @@ import BlogCard from '@/components/BlogCard.astro'
 import Container from '@/components/Container.astro'
 import Link from '@/components/Link.astro'
 import { buttonVariants } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
 import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
 import { getCollection } from 'astro:content'
 
-// 获取所有博客文章并排序
-const allPosts = await getCollection('blog')
-const sortedPosts = allPosts.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-
-// 服务器端初始显示最少数量的文章
-const initialPosts = sortedPosts.slice(0, SITE.NUM_POSTS_ON_HOMEPAGE)
-const remainingPosts = sortedPosts.slice(SITE.NUM_POSTS_ON_HOMEPAGE)
-
-// 检查第一篇文章的图片
-const firstPostImage = typeof initialPosts[0]?.data.image === 'string' ? initialPosts[0].data.image : null;
+const blog = (await getCollection('blog'))
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, SITE.NUM_POSTS_ON_HOMEPAGE)
 ---
 
 <Layout title="Home" description={SITE.DESCRIPTION}>
   <Container class="flex flex-col gap-y-6">
+    <section>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-3xl">0xd00</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p class="mb-2 text-sm text-muted-foreground">
+            0xd00 是一个专注于高级渗透测试与漏洞利用研究的技术博客，主要分享前沿的网络安全攻防技术。内容涵盖Web应用漏洞利用、Active Directory域渗透、权限提升技巧等红队实战技术，结合Metasploit、BloodHound等工具的实际案例分析。
+          </p>
+          <p class="mb-2 text-sm text-muted-foreground">
+            网站提供按技术标签分类、多主题切换等功能，适合信息安全从业者、红队工程师及安全研究人员参考学习。
+          </p>
+        </CardContent>
+      </Card>
+    </section>
     <section class="flex flex-col gap-y-4">
       <h2 class="text-2xl font-bold">Latest posts</h2>
-      <div class="posts-container space-y-6" id="posts-container">
-        {/* 初始可见的文章 */}
-        {initialPosts.map((post) => (
-          <div class="blog-card">
-            <BlogCard entry={post} />
-          </div>
-        ))}
-        {/* 剩余的文章初始隐藏 */}
-        {remainingPosts.map((post) => (
-          <div class="blog-card" style="display: none;">
-            <BlogCard entry={post} />
-          </div>
-        ))}
-      </div>
-      <div class="flex justify-center">
+      <ul class="not-prose flex flex-col gap-y-4">
+        {
+          blog.map((post) => (
+            <li>
+              <BlogCard entry={post} />
+            </li>
+          ))
+        }
+      </ul>
+      <div class='flex justify-center'>
         <Link
-          href="/blog"
+          href='/blog'
           class={buttonVariants({ variant: 'ghost' }) + ' group'}
         >
           See all posts <span
-            class="ml-1.5 transition-transform group-hover:translate-x-1"
-            >&rarr;</span
-          >
+          class='ml-1.5 transition-transform group-hover:translate-x-1'
+        >&rarr;</span
+        >
         </Link>
       </div>
     </section>
   </Container>
 </Layout>
-
-<script>
-  function adjustVisiblePosts() {
-    const container = document.getElementById('posts-container');
-    if (!container) return;
-
-    const posts = container.querySelectorAll<HTMLDivElement>('.blog-card');
-    if (!posts.length) return;
-
-    // 获取视口高度和容器位置
-    const viewportHeight = window.innerHeight;
-    const containerTop = container.getBoundingClientRect().top;
-    const availableHeight = viewportHeight - containerTop;
-
-    // 显示文章直到填满可用空间
-    let currentHeight = 0;
-    let visiblePosts = 0;
-
-    posts.forEach((post: HTMLDivElement) => {
-      post.style.display = 'block';
-      const postHeight = post.offsetHeight;
-      currentHeight += postHeight + 24; // 24px 是 space-y-6 的间距
-
-      if (currentHeight > availableHeight && visiblePosts >= 2) {
-        post.style.display = 'none';
-        return;
-      }
-      visiblePosts++;
-    });
-  }
-
-  // 使用 requestAnimationFrame 确保在布局完成后再调整
-  function initPosts() {
-    requestAnimationFrame(() => {
-      adjustVisiblePosts();
-      // 添加 resize 监听器
-      window.addEventListener('resize', () => {
-        requestAnimationFrame(adjustVisiblePosts);
-      });
-    });
-  }
-
-  // 在页面加载完成后初始化
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPosts);
-  } else {
-    initPosts();
-  }
-
-  // 在 Astro 视图过渡后重新调整
-  document.addEventListener('astro:after-swap', initPosts);
-</script>
-
-<noscript>
-  <style>
-    .blog-card { display: block !important; }
-  </style>
-</noscript>
