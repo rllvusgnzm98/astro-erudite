@@ -13,7 +13,7 @@ authors: ['0xd00']
 
 ## 流量分析
 
-![导入pcap文件](./assets\image-20250227144525368.png)
+![导入pcap文件](./assets/image-20250227144525368.png)
 
 ## 流量过滤
 
@@ -21,7 +21,7 @@ authors: ['0xd00']
 
 发现可疑请求路径`/base64_client`
 
-![发现特殊路径](./assets\image-20250227150835278.png)
+![发现特殊路径](./assets/image-20250227150835278.png)
 
 ### 异常HTTP会话
 ```http
@@ -46,9 +46,9 @@ Last-Modified: Fri, 27 Oct 2023 03:05:03 GMT
 
 导出`HTTP`对象进行分析
 
-![导出HTTP对象](./assets\image-20250227151245629.png)
+![导出HTTP对象](./assets/image-20250227151245629.png)
 
-![查看追踪数据流](./assets\image-20250227151956920.png)
+![查看追踪数据流](./assets/image-20250227151956920.png)
 
 ## 逆向工程
 
@@ -61,7 +61,7 @@ cat base64_client | base64 -d > client
 binwalk client
 ```
 
-![解码并判断文件类型](./assets\image-20250227152159783.png)
+![解码并判断文件类型](./assets/image-20250227152159783.png)
 
 可以确定，这是一个`linux`环境下的`x86`架构可执行文件
 
@@ -69,11 +69,11 @@ binwalk client
 objdump -x client
 ```
 
-![通过objdump获取更多信息](./assets\image-20250227153006517.png)
+![通过objdump获取更多信息](./assets/image-20250227153006517.png)
 
 `pydata`段通常保存`pyc`，由此可以判断此程序通过python编写，可能通过`pyinstaller`打包
 
-![尝试运行](./assets\image-20250227153305684.png)
+![尝试运行](./assets/image-20250227153305684.png)
 
 ### pyinstaller逆向
 
@@ -83,7 +83,7 @@ objdump -x client
 python pyinstxtractor.py ./client
 ```
 
-![使用pyinstxtractor反编译](./assets\image-20250227153728901.png)
+![使用pyinstxtractor反编译](./assets/image-20250227153728901.png)
 
 使用`https://github.com/extremecoders-re/pyinstxtractor.git`来提取`pyc`文件
 
@@ -128,7 +128,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
 到这里已经知道了攻击者的流量加密方式：(xor+base编码)、端口(1337)、执行的命令混淆在图片的base64编码重，使用AAAAAAAAAA分割
 
-![在数据流中查找分割字符串](./assets\image-20250227155757779.png)
+![在数据流中查找分割字符串](./assets/image-20250227155757779.png)
 
 ## 攻击链重置
 
@@ -136,11 +136,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
 尝试解码全部请求数据，可以看到攻击者用于隐藏操作命令的图片
 
-![CyberChef解码数据1](./assets\image-20250227160244152.png)
+![CyberChef解码数据1](./assets/image-20250227160244152.png)
 
-![CyberChef解码数据2](./assets\image-20250227160319723.png)
+![CyberChef解码数据2](./assets/image-20250227160319723.png)
 
-![CyberChef解码数据3](./assets\image-20250227160346860.png)
+![CyberChef解码数据3](./assets/image-20250227160346860.png)
 
 ### 编写解密代码
 
@@ -166,7 +166,7 @@ with open(file_path) as file:
             print("Error decoding command:", e)
 ```
 ### 确认攻击者操作序列
-![查看解密出的命令](./assets\image-20250227162330454.png)
+![查看解密出的命令](./assets/image-20250227162330454.png)
 
 
 攻击者首先确认了当前用户的身份与权限
