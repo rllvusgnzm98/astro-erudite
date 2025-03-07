@@ -48,13 +48,14 @@ Last-Modified: Fri, 27 Oct 2023 03:05:03 GMT
 
 ![导出HTTP对象](./assets/image-20250227151245629.png)
 
-![查看追踪数据流](./assets/image-20250227151956920.png)
 
 ## 逆向工程
 
 ### 文件预处理
 
-因为格式看起来可能是`base64`编码，所以尝试进行解码
+![查看追踪数据流](./assets/image-20250227151956920.png)
+
+因为格式看起来可能是`base64`编码，所以尝试进行解
 
 ```bash
 cat base64_client | base64 -d > client
