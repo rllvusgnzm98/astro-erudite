@@ -32,9 +32,13 @@ const postsByYear = page.data.reduce(
 )
 
 const years = Object.keys(postsByYear).sort((a, b) => parseInt(b) - parseInt(a))
+// 第一页的canonical应指向博客主页
+const canonicalUrl = page.currentPage === 1
+  ? new URL('/blog', Astro.site).toString()
+  : undefined; // 其他分页可以不设置，使用当前URL
 ---
 
-<Layout title="Blog" description="Blog">
+<Layout title="Blog" description="Blog" canonicalUrl={canonicalUrl}>
   <Container class="flex grow flex-col gap-y-6">
     <Breadcrumbs
       items={[
