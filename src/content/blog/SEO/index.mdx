@@ -75,6 +75,16 @@ const { title, description, image, canonicalUrl } = Astro.props
 - 分页页面的首选版本是第一页
 - 标签页面的首选版本是对应的文章页面
 
+[解释canonical标签重要性的文章]: https://mangools.com/blog/canonical-tag/
+
+------
+
+> 经过以上处理并未解决问题
+
+### 4. 删除sitemap中的/tags/目录
+
+### 5. 为/tags/下页面添加noindex标记
+
 ## 效果验证
 
 实施上述更改后，需要等待Google Search Console更新数据。预计在几天到几周内，爬虫会重新爬取网站并应用新的规则。
