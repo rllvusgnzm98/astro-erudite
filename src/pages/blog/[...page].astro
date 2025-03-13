@@ -38,9 +38,17 @@ const years = Object.keys(postsByYear).sort((a, b) => parseInt(b) - parseInt(a))
 const canonicalUrl = page.currentPage === 1
   ? new URL('/blog', Astro.site).toString()
   : undefined; // 其他分页可以不设置，使用当前URL
+
+const pageTitle = `博客 - 第 ${page.currentPage} 页`;
+const pageDescription = `所有博客文章 - 第 ${page.currentPage} 页`;
 ---
 
-<Layout>
+<Layout
+  title={pageTitle}
+  description={pageDescription}
+  noindex={!isFirstPage}
+  canonicalUrl={canonicalUrl}
+>
   <Head 
     title={`博客 - 第 ${page.currentPage} 页 - ${SITE.TITLE}`}
     description={`所有博客文章 - 第 ${page.currentPage} 页`}
