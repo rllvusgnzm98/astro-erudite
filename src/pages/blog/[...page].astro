@@ -7,6 +7,7 @@ import { SITE } from '@/consts'
 import Layout from '@/layouts/Layout.astro'
 import type { PaginateFunction } from 'astro'
 import { type CollectionEntry, getCollection } from 'astro:content'
+import Head from '@/components/Head.astro'
 
 export async function getStaticPaths({
   paginate,
@@ -21,6 +22,7 @@ export async function getStaticPaths({
 }
 
 const { page } = Astro.props
+const isFirstPage = page.currentPage === 1
 
 const postsByYear = page.data.reduce(
   (acc: Record<string, CollectionEntry<'blog'>[]>, post) => {
@@ -38,7 +40,14 @@ const canonicalUrl = page.currentPage === 1
   : undefined; // 其他分页可以不设置，使用当前URL
 ---
 
-<Layout title="Blog" description="Blog" canonicalUrl={canonicalUrl}>
+<Layout>
+  <Head 
+    title={`博客 - 第 ${page.currentPage} 页 - ${SITE.TITLE}`}
+    description={`所有博客文章 - 第 ${page.currentPage} 页`}
+    noindex={!isFirstPage}
+    canonicalUrl={canonicalUrl}
+  />
+  
   <Container class="flex grow flex-col gap-y-6">
     <Breadcrumbs
       items={[

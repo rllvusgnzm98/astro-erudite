@@ -29,7 +29,14 @@ export default defineConfig({
     tailwind({
       applyBaseStyles: false,
     }),
-    sitemap(),
+    sitemap({
+      filter: (page) => {
+        if (page.includes('/tags/') && page !== '/tags/') {
+          return false;
+        }
+        return true;
+      },
+    }),
     mdx(),
     react(),
     icon(),

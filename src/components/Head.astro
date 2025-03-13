@@ -10,11 +10,12 @@ interface Props {
   description: string
   image?: string
   canonicalUrl?: string;
+  noindex?: boolean;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site)
 
-const { title, description, image = '/static/twitter-card.png', canonicalUrl } = Astro.props
+const { title, description, image = '/static/twitter-card.png', canonicalUrl, noindex = false } = Astro.props
 const currentUrl = Astro.url.toString();
 ---
 
@@ -22,13 +23,16 @@ const currentUrl = Astro.url.toString();
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="generator" content={Astro.generator} />
 
-<link rel="canonical" href={canonicalURL} />
 <link rel="sitemap" href="/sitemap-index.xml" />
 
 <title>{title}</title>
 <meta name="title" content={title} />
 <meta name="description" content={description} />
 
+{noindex
+  ? <meta name="robots" content="noindex, follow" />
+  : <meta name="robots" content="index, follow" />
+  }
 <link rel="canonical" href={canonicalUrl || currentUrl} />
 
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />

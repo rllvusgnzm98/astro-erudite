@@ -30,12 +30,13 @@ export async function getStaticPaths() {
     },
   }))
 }
-const canonicalUrl = new URL('/blog', Astro.site).toString();
 ---
 
 <Layout
   title={`Posts tagged with "${tag}"`}
   description={`A collection of posts tagged with ${tag}.`}
+  noindex={true}
+  canonicalUrl={new URL('/tags', Astro.site).toString()}
 >
   <Container class="flex flex-col gap-y-6">
     <Breadcrumbs
