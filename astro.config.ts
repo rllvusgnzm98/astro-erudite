@@ -20,7 +20,7 @@ import sectionize from '@hbsnow/rehype-sectionize'
 import icon from 'astro-icon'
 
 import vercel from '@astrojs/vercel';
-import indexNow from '@/lib/indexNow';
+import indexNow from './src/lib/indexNow';
 
 // https://astro.build/config
 export default defineConfig({
@@ -32,10 +32,7 @@ export default defineConfig({
     }),
     sitemap({
       filter: (page) => {
-        if (page.includes('/tags/') && page !== '/tags/') {
-          return false;
-        }
-        return true;
+        return !(page.includes('/tags/') && page !== '/tags/');
       },
     }),
     mdx(),
